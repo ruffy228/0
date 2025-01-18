@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Virtual Pet Care Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            padding: 20px;
+            color: #333;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 400px;
+            border: 3px solid #fff;
+            border-radius: 20px;
+            overflow: hidden;
+            background-size: cover;
+            background-position: center;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .pet {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 25px;
+            background: #fff;
+            color: #333;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .stats {
+            margin-top: 20px;
+            display: flex;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-bar {
+            width: 100px;
+            height: 10px;
+            background: #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .stat-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .hunger-fill {
+            background: #ff6b6b;
+        }
+
+        .happiness-fill {
+            background: #4ecdc4;
+        }
+
+        .energy-fill {
+            background: #ffe66d;
+        }
+
+        .photo-input {
+            margin-top: 20px;
+        }
+
+        .photo-input label {
+            background: #fff;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .photo-input input {
+            display: none;
+        }
+
+        .action-indicator {
+            position: absolute;
+            font-size: 24px;
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        @media (max-width: 480px) {
+            .game-container {
+                height: 300px;
+            }
+
+            .pet {
+                width: 80px;
+                height: 80px;
+                font-size: 30px;
+            }
+
+            button {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+
+            .stat-bar {
+                width: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Virtual Pet Care</h1>
+    <div class="game-container">
+        <div class="pet">🐶</div>
+    </div>
+    <div class="photo-input">
+        <input type="file" accept="image/*" id="bgInput" onchange="changeBackground(this)">
+        <label for="bgInput">Change Background</label>
+    </div>
+    <div class="controls">
+        <button onclick="feed()">Feed</button>
+        <button onclick="play()">Play</button>
+        <button onclick="clean()">Clean</button>
+        <button onclick="sleep()">Sleep</button>
+        <button onclick="changePet()">Change Pet</button>
+    </div>
+    <div class="stats">
+        <div class="stat">
+            <div>Hunger</div>
+            <div class="stat-bar">
+                <div class="stat-fill hunger-fill" id="hunger-fill"></div>
+            </div>
+        </div>
+        <div class="stat">
+            <div>Happiness</div>
+            <div class="stat-bar">
+                <div class="stat-fill happiness-fill" id="happiness-fill"></div>
+            </div>
+        </div>
+        <div class="stat">
+            <div>Energy</div>
+            <div class="stat-bar">
+                <div class="stat-fill energy-fill" id="energy-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pets = ['🐶', '🐱', '🐰', '🐹', '🐼'];
+        let currentPet = 0;
+        let stats = {
+            hunger: 100,
+            happiness: 100,
+            energy: 100
+        };
+
+        function updateStats() {
+            document.getElementById('hunger-fill').style.width = `${stats.hunger}%`;
+            document.getElementById('happiness-fill').style.width = `${stats.happiness}%`;
+            document.getElementById('energy-fill').style.width = `${stats.energy}%`;
+        }
+
+        function decreaseStats() {
+            stats.hunger = Math.max(0, stats.hunger - 5);
+            stats.happiness = Math.max(0, stats.happiness - 3);
+            stats.energy = Math.max(0, stats.energy - 2);
+            updateStats();
+        }
+
+        setInterval(decreaseStats, 5000);
+
+        function showActionIndicator(emoji, x, y) {
+            const indicator = document.createElement('div');
+            indicator.className = 'action-indicator';
+            indicator.textContent = emoji;
+            indicator.style.position = 'absolute';
+            indicator.style.left = `${x}px`;
+            indicator.style.top = `${y}px`;
+            document.querySelector('.game-container').appendChild(indicator);
+
+            // Animation
+            indicator.style.opacity = '1';
+            indicator.style.transform = 'translateY(-20px)';
+            
+            setTimeout(() => {
+                indicator.style.opacity = '0';
+                setTimeout(() => indicator.remove(), 300);
+            }, 700);
+        }
+
+        function feed() {
+            stats.hunger = Math.min(100, stats.hunger + 30);
+            animatePet('scale(1.2)');
+            showActionIndicator('🍖', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function play() {
+            stats.happiness = Math.min(100, stats.happiness + 20);
+            stats.energy = Math.max(0, stats.energy - 10);
+            animatePet('translateY(-50px)');
+            showActionIndicator('⚽', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function clean() {
+            stats.happiness = Math.min(100, stats.happiness + 10);
+            animatePet('rotate(360deg)');
+            showActionIndicator('✨', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function sleep() {
+            stats.energy = Math.min(100, stats.energy + 40);
+            stats.hunger = Math.max(0, stats.hunger - 20);
+            animatePet('scale(0.8)');
+            showActionIndicator('💤', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function changePet() {
+            currentPet = (currentPet + 1) % pets.length;
+            const pet = document.querySelector('.pet');
+            pet.style.transform = 'translateX(-50%) scale(0)';
+            setTimeout(() => {
+                pet.textContent = pets[currentPet];
+                pet.style.transform = 'translateX(-50%) scale(1)';
+            }, 150);
+        }
+
+        function animatePet(transform) {
+            const pet = document.querySelector('.pet');
+            pet.style.transform = `translateX(-50%) ${transform}`;
+            setTimeout(() => {
+                pet.style.transform = 'translateX(-50%)';
+            }, 500);
+        }
+
+        function changeBackground(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.querySelector('.game-container').style.backgroundImage = `url(${e.target.result})`;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Initial stats update
+        updateStats();
+    </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Virtual Pet Care Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            padding: 20px;
+            color: #333;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 400px;
+            border: 3px solid #fff;
+            border-radius: 20px;
+            overflow: hidden;
+            background-size: cover;
+            background-position: center;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .pet {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 25px;
+            background: #fff;
+            color: #333;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .stats {
+            margin-top: 20px;
+            display: flex;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-bar {
+            width: 100px;
+            height: 10px;
+            background: #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .stat-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .hunger-fill {
+            background: #ff6b6b;
+        }
+
+        .happiness-fill {
+            background: #4ecdc4;
+        }
+
+        .energy-fill {
+            background: #ffe66d;
+        }
+
+        .photo-input {
+            margin-top: 20px;
+        }
+
+        .photo-input label {
+            background: #fff;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .photo-input input {
+            display: none;
+        }
+
+        .action-indicator {
+            position: absolute;
+            font-size: 24px;
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        @media (max-width: 480px) {
+            .game-container {
+                height: 300px;
+            }
+
+            .pet {
+                width: 80px;
+                height: 80px;
+                font-size: 30px;
+            }
+
+            button {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+
+            .stat-bar {
+                width: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Virtual Pet Care</h1>
+    <div class="game-container">
+        <div class="pet">🐶</div>
+    </div>
+    <div class="photo-input">
+        <input type="file" accept="image/*" id="bgInput" onchange="changeBackground(this)">
+        <label for="bgInput">Change Background</label>
+    </div>
+    <div class="controls">
+        <button onclick="feed()">Feed</button>
+        <button onclick="play()">Play</button>
+        <button onclick="clean()">Clean</button>
+        <button onclick="sleep()">Sleep</button>
+        <button onclick="changePet()">Change Pet</button>
+    </div>
+    <div class="stats">
+        <div class="stat">
+            <div>Hunger</div>
+            <div class="stat-bar">
+                <div class="stat-fill hunger-fill" id="hunger-fill"></div>
+            </div>
+        </div>
+        <div class="stat">
+            <div>Happiness</div>
+            <div class="stat-bar">
+                <div class="stat-fill happiness-fill" id="happiness-fill"></div>
+            </div>
+        </div>
+        <div class="stat">
+            <div>Energy</div>
+            <div class="stat-bar">
+                <div class="stat-fill energy-fill" id="energy-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pets = ['🐶', '🐱', '🐰', '🐹', '🐼'];
+        let currentPet = 0;
+        let stats = {
+            hunger: 100,
+            happiness: 100,
+            energy: 100
+        };
+
+        function updateStats() {
+            document.getElementById('hunger-fill').style.width = `${stats.hunger}%`;
+            document.getElementById('happiness-fill').style.width = `${stats.happiness}%`;
+            document.getElementById('energy-fill').style.width = `${stats.energy}%`;
+        }
+
+        function decreaseStats() {
+            stats.hunger = Math.max(0, stats.hunger - 5);
+            stats.happiness = Math.max(0, stats.happiness - 3);
+            stats.energy = Math.max(0, stats.energy - 2);
+            updateStats();
+        }
+
+        setInterval(decreaseStats, 5000);
+
+        function showActionIndicator(emoji, x, y) {
+            const indicator = document.createElement('div');
+            indicator.className = 'action-indicator';
+            indicator.textContent = emoji;
+            indicator.style.position = 'absolute';
+            indicator.style.left = `${x}px`;
+            indicator.style.top = `${y}px`;
+            document.querySelector('.game-container').appendChild(indicator);
+
+            // Animation
+            indicator.style.opacity = '1';
+            indicator.style.transform = 'translateY(-20px)';
+            
+            setTimeout(() => {
+                indicator.style.opacity = '0';
+                setTimeout(() => indicator.remove(), 300);
+            }, 700);
+        }
+
+        function feed() {
+            stats.hunger = Math.min(100, stats.hunger + 30);
+            animatePet('scale(1.2)');
+            showActionIndicator('🍖', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function play() {
+            stats.happiness = Math.min(100, stats.happiness + 20);
+            stats.energy = Math.max(0, stats.energy - 10);
+            animatePet('translateY(-50px)');
+            showActionIndicator('⚽', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function clean() {
+            stats.happiness = Math.min(100, stats.happiness + 10);
+            animatePet('rotate(360deg)');
+            showActionIndicator('✨', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function sleep() {
+            stats.energy = Math.min(100, stats.energy + 40);
+            stats.hunger = Math.max(0, stats.hunger - 20);
+            animatePet('scale(0.8)');
+            showActionIndicator('💤', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function changePet() {
+            currentPet = (currentPet + 1) % pets.length;
+            const pet = document.querySelector('.pet');
+            pet.style.transform = 'translateX(-50%) scale(0)';
+            setTimeout(() => {
+                pet.textContent = pets[currentPet];
+                pet.style.transform = 'translateX(-50%) scale(1)';
+            }, 150);
+        }
+
+        function animatePet(transform) {
+            const pet = document.querySelector('.pet');
+            pet.style.transform = `translateX(-50%) ${transform}`;
+            setTimeout(() => {
+                pet.style.transform = 'translateX(-50%)';
+            }, 500);
+        }
+
+        function changeBackground(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.querySelector('.game-container').style.backgroundImage = `url(${e.target.result})`;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Initial stats update
+        updateStats();
+    </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Virtual Pet Care Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            padding: 20px;
+            color: #333;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 400px;
+            border: 3px solid #fff;
+            border-radius: 20px;
+            overflow: hidden;
+            background-size: cover;
+            background-position: center;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .pet {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 25px;
+            background: #fff;
+            color: #333;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .stats {
+            margin-top: 20px;
+            display: flex;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-bar {
+            width: 100px;
+            height: 10px;
+            background: #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .stat-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .hunger-fill {
+            background: #ff6b6b;
+        }
+
+        .happiness-fill {
+            background: #4ecdc4;
+        }
+
+        .energy-fill {
+            background: #ffe66d;
+        }
+
+        .photo-input {
+            margin-top: 20px;
+        }
+
+        .photo-input label {
+            background: #fff;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .photo-input input {
+            display: none;
+        }
+
+        .action-indicator {
+            position: absolute;
+            font-size: 24px;
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        @media (max-width: 480px) {
+            .game-container {
+                height: 300px;
+            }
+
+            .pet {
+                width: 80px;
+                height: 80px;
+                font-size: 30px;
+            }
+
+            button {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+
+            .stat-bar {
+                width: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Virtual Pet Care</h1>
+    <div class="game-container">
+        <div class="pet">🐶</div>
+    </div>
+    <div class="photo-input">
+        <input type="file" accept="image/*" id="bgInput" onchange="changeBackground(this)">
+        <label for="bgInput">Change Background</label>
+    </div>
+    <div class="controls">
+        <button onclick="feed()">Feed</button>
+        <button onclick="play()">Play</button>
+        <button onclick="clean()">Clean</button>
+        <button onclick="sleep()">Sleep</button>
+        <button onclick="changePet()">Change Pet</button>
+    </div>
+    <div class="stats">
+        <div class="stat">
+            <div>Hunger</div>
+            <div class="stat-bar">
+                <div class="stat-fill hunger-fill" id="hunger-fill"></div>
+            </div>
+        </div>
+        <div class="stat">
+            <div>Happiness</div>
+            <div class="stat-bar">
+                <div class="stat-fill happiness-fill" id="happiness-fill"></div>
+            </div>
+        </div>
+        <div class="stat">
+            <div>Energy</div>
+            <div class="stat-bar">
+                <div class="stat-fill energy-fill" id="energy-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pets = ['🐶', '🐱', '🐰', '🐹', '🐼'];
+        let currentPet = 0;
+        let stats = {
+            hunger: 100,
+            happiness: 100,
+            energy: 100
+        };
+
+        function updateStats() {
+            document.getElementById('hunger-fill').style.width = `${stats.hunger}%`;
+            document.getElementById('happiness-fill').style.width = `${stats.happiness}%`;
+            document.getElementById('energy-fill').style.width = `${stats.energy}%`;
+        }
+
+        function decreaseStats() {
+            stats.hunger = Math.max(0, stats.hunger - 5);
+            stats.happiness = Math.max(0, stats.happiness - 3);
+            stats.energy = Math.max(0, stats.energy - 2);
+            updateStats();
+        }
+
+        setInterval(decreaseStats, 5000);
+
+        function showActionIndicator(emoji, x, y) {
+            const indicator = document.createElement('div');
+            indicator.className = 'action-indicator';
+            indicator.textContent = emoji;
+            indicator.style.position = 'absolute';
+            indicator.style.left = `${x}px`;
+            indicator.style.top = `${y}px`;
+            document.querySelector('.game-container').appendChild(indicator);
+
+            // Animation
+            indicator.style.opacity = '1';
+            indicator.style.transform = 'translateY(-20px)';
+            
+            setTimeout(() => {
+                indicator.style.opacity = '0';
+                setTimeout(() => indicator.remove(), 300);
+            }, 700);
+        }
+
+        function feed() {
+            stats.hunger = Math.min(100, stats.hunger + 30);
+            animatePet('scale(1.2)');
+            showActionIndicator('🍖', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function play() {
+            stats.happiness = Math.min(100, stats.happiness + 20);
+            stats.energy = Math.max(0, stats.energy - 10);
+            animatePet('translateY(-50px)');
+            showActionIndicator('⚽', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function clean() {
+            stats.happiness = Math.min(100, stats.happiness + 10);
+            animatePet('rotate(360deg)');
+            showActionIndicator('✨', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function sleep() {
+            stats.energy = Math.min(100, stats.energy + 40);
+            stats.hunger = Math.max(0, stats.hunger - 20);
+            animatePet('scale(0.8)');
+            showActionIndicator('💤', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function changePet() {
+            currentPet = (currentPet + 1) % pets.length;
+            const pet = document.querySelector('.pet');
+            pet.style.transform = 'translateX(-50%) scale(0)';
+            setTimeout(() => {
+                pet.textContent = pets[currentPet];
+                pet.style.transform = 'translateX(-50%) scale(1)';
+            }, 150);
+        }
+
+        function animatePet(transform) {
+            const pet = document.querySelector('.pet');
+            pet.style.transform = `translateX(-50%) ${transform}`;
+            setTimeout(() => {
+                pet.style.transform = 'translateX(-50%)';
+            }, 500);
+        }
+
+        function changeBackground(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.querySelector('.game-container').style.backgroundImage = `url(${e.target.result})`;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Initial stats update
+        updateStats();
+    </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Virtual Pet Care Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            padding: 20px;
+            color: #333;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 400px;
+            border: 3px solid #fff;
+            border-radius: 20px;
+            overflow: hidden;
+            background-size: cover;
+            background-position: center;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .pet {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 25px;
+            background: #fff;
+            color: #333;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .stats {
+            margin-top: 20px;
+            display: flex;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-bar {
+            width: 100px;
+            height: 10px;
+            background: #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .stat-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .hunger-fill {
+            background: #ff6b6b;
+        }
+
+        .happiness-fill {
+            background: #4ecdc4;
+        }
+
+        .energy-fill {
+            background: #ffe66d;
+        }
+
+        .photo-input {
+            margin-top: 20px;
+        }
+
+        .photo-input label {
+            background: #fff;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .photo-input input {
+            display: none;
+        }
+
+        .action-indicator {
+            position: absolute;
+            font-size: 24px;
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        @media (max-width: 480px) {
+            .game-container {
+                height: 300px;
+            }
+
+            .pet {
+                width: 80px;
+                height: 80px;
+                font-size: 30px;
+            }
+
+            button {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+
+            .stat-bar {
+                width: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Virtual Pet Care</h1>
+    <div class="game-container">
+        <div class="pet">🐶</div>
+    </div>
+    <div class="photo-input">
+        <input type="file" accept="image/*" id="bgInput" onchange="changeBackground(this)">
+        <label for="bgInput">Change Background</label>
+    </div>
+    <div class="controls">
+        <button onclick="feed()">Feed</button>
+        <button onclick="play()">Play</button>
+        <button onclick="clean()">Clean</button>
+        <button onclick="sleep()">Sleep</button>
+        <button onclick="changePet()">Change Pet</button>
+    </div>
+    <div class="stats">
+        <div class="stat">
+            <div>Hunger</div>
+            <div class="stat-bar">
+                <div class="stat-fill hunger-fill" id="hunger-fill"></div>
+            </div>
+        </div>
+        <div class="stat">
+            <div>Happiness</div>
+            <div class="stat-bar">
+                <div class="stat-fill happiness-fill" id="happiness-fill"></div>
+            </div>
+        </div>
+        <div class="stat">
+            <div>Energy</div>
+            <div class="stat-bar">
+                <div class="stat-fill energy-fill" id="energy-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pets = ['🐶', '🐱', '🐰', '🐹', '🐼'];
+        let currentPet = 0;
+        let stats = {
+            hunger: 100,
+            happiness: 100,
+            energy: 100
+        };
+
+        function updateStats() {
+            document.getElementById('hunger-fill').style.width = `${stats.hunger}%`;
+            document.getElementById('happiness-fill').style.width = `${stats.happiness}%`;
+            document.getElementById('energy-fill').style.width = `${stats.energy}%`;
+        }
+
+        function decreaseStats() {
+            stats.hunger = Math.max(0, stats.hunger - 5);
+            stats.happiness = Math.max(0, stats.happiness - 3);
+            stats.energy = Math.max(0, stats.energy - 2);
+            updateStats();
+        }
+
+        setInterval(decreaseStats, 5000);
+
+        function showActionIndicator(emoji, x, y) {
+            const indicator = document.createElement('div');
+            indicator.className = 'action-indicator';
+            indicator.textContent = emoji;
+            indicator.style.position = 'absolute';
+            indicator.style.left = `${x}px`;
+            indicator.style.top = `${y}px`;
+            document.querySelector('.game-container').appendChild(indicator);
+
+            // Animation
+            indicator.style.opacity = '1';
+            indicator.style.transform = 'translateY(-20px)';
+            
+            setTimeout(() => {
+                indicator.style.opacity = '0';
+                setTimeout(() => indicator.remove(), 300);
+            }, 700);
+        }
+
+        function feed() {
+            stats.hunger = Math.min(100, stats.hunger + 30);
+            animatePet('scale(1.2)');
+            showActionIndicator('🍖', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function play() {
+            stats.happiness = Math.min(100, stats.happiness + 20);
+            stats.energy = Math.max(0, stats.energy - 10);
+            animatePet('translateY(-50px)');
+            showActionIndicator('⚽', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function clean() {
+            stats.happiness = Math.min(100, stats.happiness + 10);
+            animatePet('rotate(360deg)');
+            showActionIndicator('✨', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function sleep() {
+            stats.energy = Math.min(100, stats.energy + 40);
+            stats.hunger = Math.max(0, stats.hunger - 20);
+            animatePet('scale(0.8)');
+            showActionIndicator('💤', Math.random() * 400 + 50, Math.random() * 200 + 50);
+            updateStats();
+        }
+
+        function changePet() {
+            currentPet = (currentPet + 1) % pets.length;
+            const pet = document.querySelector('.pet');
+            pet.style.transform = 'translateX(-50%) scale(0)';
+            setTimeout(() => {
+                pet.textContent = pets[currentPet];
+                pet.style.transform = 'translateX(-50%) scale(1)';
+            }, 150);
+        }
+
+        function animatePet(transform) {
+            const pet = document.querySelector('.pet');
+            pet.style.transform = `translateX(-50%) ${transform}`;
+            setTimeout(() => {
+                pet.style.transform = 'translateX(-50%)';
+            }, 500);
+        }
+
+        function changeBackground(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.querySelector('.game-container').style.backgroundImage = `url(${e.target.result})`;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Initial stats update
+        updateStats();
+    </script>
+</body>
+</html>
